@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_mapbox_navigation/library.dart';
@@ -66,25 +67,25 @@ class DriverNavigationService {
   Position destination;
   DriverNavigationService({required this.destination})
       : _directions = MapBoxNavigation(onRouteEvent: (RouteEvent e) async {
-    print(e.eventType);
-    print("^^^^^^^^^^^^^^^^^^^^^^^^^^^");
-    switch (e.eventType) {
-      case MapBoxEvent.navigation_running:
-        print("Navigation has started");
-        break;
-      case MapBoxEvent.milestone_event:
-        break;
-      case MapBoxEvent.navigation_finished:
-      case MapBoxEvent.navigation_cancelled:
-        print("Navigation has ended");
-        break;
-      default:
-        break;
-    }
-  });
+          print(e.eventType);
+          print("^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+          switch (e.eventType) {
+            case MapBoxEvent.navigation_running:
+              print("Navigation has started");
+              break;
+            case MapBoxEvent.milestone_event:
+              break;
+            case MapBoxEvent.navigation_finished:
+            case MapBoxEvent.navigation_cancelled:
+              print("Navigation has ended");
+              break;
+            default:
+              break;
+          }
+        });
 
   navigateViaMapBox() async {
-    Position currentPosition = await Geolocator.getCurrentPosition(forceAndroidLocationManager: true);
+    Position currentPosition = await getCurrentPosition();
     MapBoxOptions _mapBoxOptions = MapBoxOptions(
         voiceInstructionsEnabled: true,
         bannerInstructionsEnabled: true,
@@ -105,4 +106,60 @@ class DriverNavigationService {
     return await _directions.startNavigation(wayPoints: wayPoints, options: _mapBoxOptions);
   }
 
+  static Future<Position> getCurrentPosition() async {
+    try {
+      if (Platform.isAndroid) {
+        Position cPos =
+            await Geolocator.getCurrentPosition(timeLimit: Duration(seconds: 5), forceAndroidLocationManager: true);
+
+        return cPos;
+      } else {
+        Position cPos = await Geolocator.getCurrentPosition(timeLimit: Duration(seconds: 5));
+        return cPos;
+      }
+    } catch (e) {
+      if (e is TimeoutException) {
+        print(
+          "Timeout in getting position, using fallback method\n$e",
+        );
+        try {
+          Position cPos =
+              await Geolocator.getCurrentPosition(forceAndroidLocationManager: true, timeLimit: Duration(seconds: 5));
+          print("Retrieved position\n${cPos.toString()}");
+          return cPos;
+        } on Exception catch (e) {
+          if (e is TimeoutException) {
+            print(
+              "Timeout in getting position, using fallback method\n$e",
+            );
+            try {
+              Position? cPos = await Geolocator.getLastKnownPosition();
+              if (cPos == null) {
+                throw Exception("Falling back to last known position[DEFAULT]");
+              } else {
+                print("Retrieved position\n${cPos.toString()}");
+                return cPos;
+              }
+            } catch (e) {
+              print('Code: [GeoLocation]\n$e');
+              Position? cPos = await Geolocator.getLastKnownPosition(forceAndroidLocationManager: true);
+              if (cPos == null) {
+                print("Failed fallback methods, returning [0,0]\n$e");
+                return Position.fromMap({"longitude": 0, "latitude": 0, "speed": 1});
+              } else {
+                print("Retrieved last known position\n${cPos.toString()}");
+                return cPos;
+              }
+            }
+          } else {
+            print("Failed fallback methods, returning [0,0]\n$e");
+            return Position.fromMap({"longitude": 0, "latitude": 0, "speed": 1});
+          }
+        }
+      } else {
+        print("Failed fallback methods, returning [0,0]\n$e");
+        return Position.fromMap({"longitude": 0, "latitude": 0, "speed": 1});
+      }
+    }
+  }
 }
