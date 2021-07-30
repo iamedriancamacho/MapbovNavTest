@@ -65,32 +65,7 @@ class DriverNavigationService {
   MapBoxNavigation _directions;
   Position destination;
   DriverNavigationService({required this.destination})
-      : _directions = MapBoxNavigation(onRouteEvent: routeEventHandler);
-
-  navigateViaMapBox() async {
-    Position currentPosition = await Geolocator.getCurrentPosition(forceAndroidLocationManager: true);
-    MapBoxOptions _mapBoxOptions = MapBoxOptions(
-        voiceInstructionsEnabled: true,
-        bannerInstructionsEnabled: true,
-        longPressDestinationEnabled: false,
-        mode: MapBoxNavigationMode.driving,
-        simulateRoute: false,
-        tilt: 0.0,
-        bearing: 0.0,
-        language: "en",
-        units: VoiceUnits.metric,
-        zoom: 23,
-        animateBuildRoute: false,
-        initialLatitude: currentPosition.latitude,
-        initialLongitude: currentPosition.longitude,
-        enableRefresh: true);
-    List<WayPoint> wayPoints = [];
-    wayPoints.add(WayPoint(name: "Start", latitude: currentPosition.latitude, longitude: currentPosition.longitude));
-    wayPoints.add(WayPoint(name: "Destination", latitude: destination.latitude, longitude: destination.longitude));
-    return await _directions.startNavigation(wayPoints: wayPoints, options: _mapBoxOptions);
-  }
-
-  static routeEventHandler(RouteEvent e) async {
+      : _directions = MapBoxNavigation(onRouteEvent: (RouteEvent e) async {
     print(e.eventType);
     print("^^^^^^^^^^^^^^^^^^^^^^^^^^^");
     switch (e.eventType) {
@@ -106,5 +81,28 @@ class DriverNavigationService {
       default:
         break;
     }
+  });
+
+  navigateViaMapBox() async {
+    Position currentPosition = await Geolocator.getCurrentPosition(forceAndroidLocationManager: true);
+    MapBoxOptions _mapBoxOptions = MapBoxOptions(
+        voiceInstructionsEnabled: true,
+        bannerInstructionsEnabled: true,
+        longPressDestinationEnabled: false,
+        mode: MapBoxNavigationMode.driving,
+        tilt: 0.0,
+        bearing: 0.0,
+        language: "en",
+        units: VoiceUnits.metric,
+        zoom: 23,
+        animateBuildRoute: true,
+        initialLatitude: currentPosition.latitude,
+        initialLongitude: currentPosition.longitude,
+        enableRefresh: true);
+    List<WayPoint> wayPoints = [];
+    wayPoints.add(WayPoint(name: "Start", latitude: currentPosition.latitude, longitude: currentPosition.longitude));
+    wayPoints.add(WayPoint(name: "Destination", latitude: destination.latitude, longitude: destination.longitude));
+    return await _directions.startNavigation(wayPoints: wayPoints, options: _mapBoxOptions);
   }
+
 }
